@@ -14,3 +14,63 @@ The implementation showcases:
 - Integrating with Claude Desktop for interactive ML workflows
 
 Perfect for ML engineers looking to understand MCP server development and build their own specialized tools.
+
+## Setup and Installation
+
+First, install **uv**:
+
+```bash
+brew install uv
+```
+
+Then clone this repository and set up the virtual environment:
+
+```bash
+# Clone the repository
+git clone https://github.com/slavadubrov/mcp-featurestore
+cd mcp-featurestore
+
+# Create virtual environment and install dependencies
+uv sync
+```
+
+## Initialize Database
+
+```bash
+source .venv/bin/activate && python database.py
+```
+
+## Run MCP Server
+
+```bash
+source .venv/bin/activate && mcp dev featurestore_server.py
+```
+
+## 4 Connecting to Claude Desktop
+
+To use the FeatureStoreLite server with Claude Desktop, update your Claude configuration:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "featurestore": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "mcp[cli]",
+        "mcp",
+        "run",
+        "/path/to/your/featurestore_server.py"
+      ]
+    }
+  }
+}
+```
+
+## Reference
+
+Original article can be found at: https://slavadubrov.github.io/blog/2025/06/10/building-a-custom-featurestorelite-mcp-server-using-uv/

@@ -37,13 +37,13 @@ uv sync
 ## Initialize Database
 
 ```bash
-source .venv/bin/activate && python database.py
+uv run python database.py
 ```
 
 ## Run MCP Server
 
 ```bash
-source .venv/bin/activate && mcp dev featurestore_server.py
+uv run mcp dev featurestore_server.py
 ```
 
 ## Connecting to Claude Desktop

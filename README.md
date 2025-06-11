@@ -46,7 +46,7 @@ source .venv/bin/activate && python database.py
 source .venv/bin/activate && mcp dev featurestore_server.py
 ```
 
-## 4 Connecting to Claude Desktop
+## Connecting to Claude Desktop
 
 To use the FeatureStoreLite server with Claude Desktop, update your Claude configuration:
 

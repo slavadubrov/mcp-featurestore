@@ -1,17 +1,17 @@
 # database.py
-
-import sqlite3
+import json
 import os
+import sqlite3
 
 
-def get_db_path():
+def get_db_path() -> str:
     """Get the database path - always in the script's directory"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(script_dir, "features.db")
 
 
-def init_db():
-    """Initialize the feature store database"""
+def init_db() -> None:
+    """Initialize the feature store database with table and sample data"""
     conn = sqlite3.connect(get_db_path())
     conn.execute("""
         CREATE TABLE IF NOT EXISTS features (
@@ -22,55 +22,39 @@ def init_db():
         )
     """)
 
-    # Add example features for experimentation
+    # Sample data for experimentation
     example_features = [
         (
-            "user_123", 
+            "user_123",
             "[0.1, 0.2, -0.5, 0.8, 0.3, -0.1, 0.9, -0.4]",
-            '{"type": "user_embedding", "user_id": 123, "age": 25, '
-            '"category": "premium"}'
+            json.dumps({"type": "user", "id": 123, "segment": "premium"}),
         ),
         (
-            "product_abc", 
+            "product_abc",
             "[0.7, -0.3, 0.4, 0.1, -0.8, 0.6, 0.2, -0.5]",
-            '{"type": "product_embedding", "product_id": "abc", '
-            '"price": 29.99, "category": "electronics"}'
+            json.dumps({"type": "product", "id": "abc", "category": "electronics"}),
         ),
-        (
-            "doc_guide_001", 
-            "[-0.2, 0.5, 0.9, -0.1, 0.4, 0.7, -0.6, 0.3]",
-            '{"type": "document_embedding", "doc_id": "guide_001", '
-            '"title": "Getting Started Guide", "section": "introduction"}'
-        ),
-        (
-            "recommendation_engine", 
-            "[0.4, 0.8, -0.2, 0.6, -0.7, 0.1, 0.5, -0.9]",
-            '{"type": "model_embedding", "model": "collaborative_filter", '
-            '"version": "1.2", "accuracy": 0.85}'
-        )
     ]
-    
-    # Insert example features only if they don't exist
+
+    # Insert if not exists
     for key, vector, metadata in example_features:
-        existing = conn.execute(
-            "SELECT 1 FROM features WHERE key = ?", (key,)
-        ).fetchone()
-        if not existing:
+        try:
             conn.execute(
-                "INSERT INTO features (key, vector, metadata) "
-                "VALUES (?, ?, ?)",
-                (key, vector, metadata)
+                "INSERT INTO features (key, vector, metadata) VALUES (?, ?, ?)",
+                (key, vector, metadata),
             )
-    
+        except sqlite3.IntegrityError:
+            pass  # Already exists
+
     conn.commit()
     conn.close()
 
 
-def get_db_connection():
+def get_db_connection() -> sqlite3.Connection:
     """Get a database connection"""
     return sqlite3.connect(get_db_path())
 
 
 if __name__ == "__main__":
     init_db()
-    print("Database initialized successfully!")
+    print("✅ Database initialized successfully!")

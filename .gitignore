@@ -9,3 +9,12 @@ wheels/
 # Virtual environments
 .venv
 features.db
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints
+
+# tmp files
+tmp.ipynb

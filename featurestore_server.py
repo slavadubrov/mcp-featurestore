@@ -1,7 +1,9 @@
 # featurestore_server.py
 import json
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import Field
 
 from database import get_db_connection, init_db
 
@@ -11,13 +13,13 @@ mcp = FastMCP("FeatureStoreLite")
 # Ensure DB is ready when server starts
 init_db()
 
+# A float that rejects NaN and infinities
+FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
+
 
 @mcp.resource("schema://main")
 def get_schema() -> str:
-    """
-    Resource: Provide the database schema.
-    Resources are passive data that LLMs can read like files.
-    """
+    """The CREATE TABLE statements of the feature store database."""
     conn = get_db_connection()
     try:
         schema = conn.execute(
@@ -29,60 +31,58 @@ def get_schema() -> str:
 
 
 @mcp.tool()
-def store_feature(key: str, vector: str, metadata: str | None = None) -> str:
+def store_feature(
+    key: str,
+    vector: Annotated[list[FiniteFloat], Field(min_length=1)],
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    """Store a feature vector under key. Overwrites an existing key.
+
+    vector: non-empty list of finite numbers, e.g. [0.1, 0.2].
+    metadata: optional JSON object, e.g. {"type": "user"}.
     """
-    Tool: Store a feature vector.
-    Tools are executable functions that LLMs can call to perform actions.
-    """
+    metadata_json = None if metadata is None else json.dumps(metadata, allow_nan=False)
     conn = get_db_connection()
     try:
-        # Validate that vector is valid JSON
-        json.loads(vector)
-
         conn.execute(
             "INSERT OR REPLACE INTO features (key, vector, metadata) VALUES (?, ?, ?)",
-            (key, vector, metadata),
+            (key, json.dumps(vector), metadata_json),
         )
         conn.commit()
-        return f"Successfully stored feature '{key}'"
-    except json.JSONDecodeError:
-        return "Error: Vector must be a valid JSON array string (e.g., '[0.1, 0.2]')"
-    except Exception as e:
-        return f"Error: {str(e)}"
     finally:
         conn.close()
+    return f"Stored feature '{key}'"
 
 
 @mcp.tool()
 def get_feature(key: str) -> str:
-    """
-    Tool: Retrieve a feature vector by key.
+    """Return the vector and metadata stored under key, as JSON.
+
+    Call list_features first if you do not know the key.
     """
     conn = get_db_connection()
     try:
         row = conn.execute(
             "SELECT vector, metadata FROM features WHERE key = ?", (key,)
         ).fetchone()
-
-        if row:
-            return json.dumps(
-                {
-                    "key": key,
-                    "vector": json.loads(row[0]),
-                    "metadata": json.loads(row[1]) if row[1] else None,
-                },
-                indent=2,
-            )
-        return f"Feature '{key}' not found."
     finally:
         conn.close()
+
+    if row is None:
+        raise ValueError(f"Feature '{key}' not found. Call list_features for valid keys.")
+    return json.dumps(
+        {
+            "key": key,
+            "vector": json.loads(row[0]),
+            "metadata": json.loads(row[1]) if row[1] else None,
+        },
+        indent=2,
+    )
 
 
 @mcp.tool()
 def list_features() -> str:
-    """
-    Tool: List all available feature keys.
-    """
+    """Return a JSON array of every stored feature key."""
     conn = get_db_connection()
     try:
         rows = conn.execute("SELECT key FROM features").fetchall()

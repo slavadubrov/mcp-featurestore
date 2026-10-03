@@ -1,76 +1,61 @@
 # FeatureStoreLite MCP Server Example
 
-This repository contains a lightweight example implementation of a Feature Store MCP (Model Context Protocol) server built with FastMCP and Python. It demonstrates how to create a custom MCP server that ML engineers can use to store and retrieve machine learning features through Claude Desktop.
+A small MCP server, built with the FastMCP API of the official MCP Python SDK (v1), that stores and returns ML feature vectors from a local SQLite database. It is the companion code for the article [MCP Server Tutorial: Build with Python, uv, and FastMCP](https://slavadubrov.github.io/blog/2025/06/10/mcp-server-tutorial-uv-fastmcp/).
 
-## Purpose
+The server exposes:
 
-This code serves as a practical companion to the blog article "Building a Custom FeatureStoreLite MCP Server Using uv" - a step-by-step guide showing how to build your own feature store MCP server from scratch, run it with **uv**, and integrate it seamlessly with Claude Desktop.
+- three tools: `get_feature`, `store_feature`, `list_features`
+- one resource: `schema://main`, the database's `CREATE TABLE` statement
 
-The implementation showcases:
+## Setup
 
-- Setting up a FastMCP server with Python
-- Creating feature store operations (store, retrieve, list features)
-- Running the server through uv for easy dependency management
-- Integrating with Claude Desktop for interactive ML workflows
-
-Perfect for ML engineers looking to understand MCP server development and build their own specialized tools.
-
-## Setup and Installation
-
-First, install **uv**:
+Install [uv](https://docs.astral.sh/uv/), then:
 
 ```bash
-brew install uv
-```
-
-Then clone this repository and set up the virtual environment:
-
-```bash
-# Clone the repository
 git clone https://github.com/slavadubrov/mcp-featurestore
 cd mcp-featurestore
-
-# Create virtual environment and install dependencies
-uv sync
+uv sync --locked
+uv run python database.py   # create features.db with two seed rows
 ```
 
-## Initialize Database
+The project pins `mcp[cli]>=1.28,<2`. The code uses the v1 API (`mcp.server.fastmcp`).
+
+## Check the server
+
+Call every tool through an in-memory MCP client:
 
 ```bash
-uv run python database.py
+uv run python test_server.py
 ```
 
-## Run MCP Server
+Or open the MCP Inspector and call the tools by hand:
 
 ```bash
 uv run mcp dev featurestore_server.py
 ```
 
-## Connecting to Claude Desktop
+## Connect to Claude Desktop
 
-To use the FeatureStoreLite server with Claude Desktop, update your Claude configuration:
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+Add the server to `claude_desktop_config.json`
+(macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`), with absolute paths:
 
 ```json
 {
-  "mcpServers": {
-    "featurestore": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--with",
-        "mcp[cli]",
-        "mcp",
-        "run",
-        "/path/to/your/featurestore_server.py"
-      ]
+    "mcpServers": {
+        "featurestore": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--directory",
+                "/ABSOLUTE/PATH/TO/mcp-featurestore",
+                "--locked",
+                "mcp",
+                "run",
+                "/ABSOLUTE/PATH/TO/mcp-featurestore/featurestore_server.py"
+            ]
+        }
     }
-  }
 }
 ```
 
-## Reference
-
-Original article can be found at: https://slavadubrov.github.io/blog/2025/06/10/building-a-custom-featurestorelite-mcp-server-using-uv/
+`--directory` makes uv use this project's `uv.lock`, and `--locked` fails instead of changing it. Restart Claude Desktop after editing the file.
